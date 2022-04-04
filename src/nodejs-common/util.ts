@@ -29,6 +29,13 @@ import {Duplex, DuplexOptions, Readable, Transform, Writable} from 'stream';
 import {teenyRequest} from 'teeny-request';
 
 import {Interceptor} from './service-object';
+import {
+  GaxiosOptions,
+  GaxiosPromise,
+  GaxiosResponse,
+  GaxiosError,
+} from 'gaxios';
+import * as gaxios from 'gaxios';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const duplexify: DuplexifyConstructor = require('duplexify');
@@ -713,6 +720,12 @@ export class Util {
         }
       };
 
+      // console.log("req config");
+      // console.log(reqConfig);
+
+      // console.log("req options");
+      // console.log(reqOpts);
+
       Promise.all([
         config.projectId && config.projectId !== '{{projectId}}'
           ? // The user provided a project ID. We don't need to check with the
@@ -726,6 +739,8 @@ export class Util {
           : authClient.authorizeRequest(reqOpts),
       ])
         .then(([_projectId, authorizedReqOpts]) => {
+          // console.log("authorized req opts:")
+          // console.log(authorizedReqOpts);
           projectId = _projectId as string;
           onAuthenticated(null, authorizedReqOpts as DecorateRequestOptions);
         })
@@ -796,6 +811,41 @@ export class Util {
     } else if (config.retryOptions?.maxRetries) {
       maxRetryValue = config.retryOptions.maxRetries;
     }
+
+    console.log("config")
+    console.log(config)
+
+    console.log("reqOpts")
+    console.log(reqOpts)
+
+
+    const reqOptsGaxios: GaxiosOptions = {
+      method: reqOpts.method as GaxiosOptions["method"],
+      url: reqOpts.uri,
+      params: {
+        queryString: reqOpts.qs
+      },
+      data: {
+        "name": "shaffeeullahbucket",
+      },
+      headers: reqOpts.headers,
+      retryConfig: {
+        retry: config.retryOptions?.maxRetries
+      }
+    };
+
+    gaxios.request(reqOptsGaxios).then(() => {
+      console.log("completed reqest");
+    }).catch((e) => {
+      console.log(e);
+    })
+
+
+
+
+
+
+
 
     const options = {
       request: teenyRequest.defaults(requestDefaults),
