@@ -37,6 +37,7 @@ import {
 } from 'gaxios';
 import * as gaxios from 'gaxios';
 import { WriteStream } from 'fs';
+import { request } from 'http';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const duplexify: DuplexifyConstructor = require('duplexify');
@@ -855,34 +856,28 @@ export class Util {
     const isGetRequest = (reqOpts.method || 'GET').toUpperCase() === 'GET';
 
     if (isGetRequest) {
+      console.log("get request")
       const reqOptsGaxios: GaxiosOptions = {
-        method: reqOpts.method as GaxiosOptions["method"],
+        method: 'GET',
         url: reqOpts.uri,
-        params: {
-          queryString: reqOpts.qs
-        },
+        params: reqOpts.qs,
         headers: reqOpts.headers,
         retryConfig: {
           retry: config.retryOptions?.maxRetries
         },
         responseType: 'stream'
       };
-  
       gaxios.request<Readable>(reqOptsGaxios).then((response) => {
         requestStream = response.data;
-        console.log('request stream');
-        console.log(requestStream);
-        // dup.setReadable(requestStream);
+        dup.setReadable(requestStream);
+
         // Replay the Request events back to the stream.
-        requestStream.pipe(dup);
+
         requestStream
-        .on('data', () => {
-          console.log("on data")
-          dup.setReadable(requestStream);
-          console.log("dup");
-          console.log(dup);
-          dup.emit.bind(dup, 'data')
-        } )
+          .on('data', () => {
+            console.log("on data")
+            dup.emit.bind(dup, 'data')
+          })
         .on('error', () => {
           console.log("on error")
           dup.destroy.bind(dup)
@@ -897,7 +892,11 @@ export class Util {
         });
         dup.abort = requestStream.abort;
         return dup;
-      })} else {
+      }).catch(e => {
+        console.log(e);
+      })
+    } else {
+      console.log("not get request")
       // Streaming writable HTTP requests cannot be retried.
       requestStream = options.request!(reqOpts);
       dup.setWritable(requestStream);
@@ -911,6 +910,7 @@ export class Util {
       dup.abort = requestStream.abort;
       return dup;
     }
+    console.log("shouldnt get here")
   }
 
   /**

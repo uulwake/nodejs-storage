@@ -2267,15 +2267,18 @@ describe('storage', () => {
 
         let sizeStreamed = 0;
         const stream = file!
-          .createReadStream(byteRange)
-          .on('data', chunk => {
-            console.log("got data")
-            sizeStreamed += chunk.length;
-          })
-          // .on('error', done)
+          .createReadStream(byteRange);
+          console.log(stream)
+          // .on('data', chunk => {
+          //   console.log("got data")
+          //   sizeStreamed += chunk.length;
+          // })
+          // .on('error', () => {
+          //   console.log("error happened")
+          // })
           // .on('end', () => {
+          //   console.log("on end happened")
           //   assert.strictEqual(sizeStreamed, expectedContentSize);
-          //   file!.delete(done);
           // });
       });
     });
