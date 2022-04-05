@@ -36,6 +36,7 @@ import {
   GaxiosError,
 } from 'gaxios';
 import * as gaxios from 'gaxios';
+import { WriteStream } from 'fs';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const duplexify: DuplexifyConstructor = require('duplexify');
@@ -812,40 +813,11 @@ export class Util {
       maxRetryValue = config.retryOptions.maxRetries;
     }
 
-    console.log("config")
-    console.log(config)
+    // console.log("config")
+    // console.log(config)
 
-    console.log("reqOpts")
-    console.log(reqOpts)
-
-
-    const reqOptsGaxios: GaxiosOptions = {
-      method: reqOpts.method as GaxiosOptions["method"],
-      url: reqOpts.uri,
-      params: {
-        queryString: reqOpts.qs
-      },
-      data: {
-        "name": "shaffeeullahbucket",
-      },
-      headers: reqOpts.headers,
-      retryConfig: {
-        retry: config.retryOptions?.maxRetries
-      }
-    };
-
-    gaxios.request(reqOptsGaxios).then(() => {
-      console.log("completed reqest");
-    }).catch((e) => {
-      console.log(e);
-    })
-
-
-
-
-
-
-
+    // console.log("reqOpts")
+    // console.log(reqOpts)
 
     const options = {
       request: teenyRequest.defaults(requestDefaults),
@@ -883,22 +855,62 @@ export class Util {
     const isGetRequest = (reqOpts.method || 'GET').toUpperCase() === 'GET';
 
     if (isGetRequest) {
-      requestStream = retryRequest(reqOpts, options);
-      dup.setReadable(requestStream);
-    } else {
+      const reqOptsGaxios: GaxiosOptions = {
+        method: reqOpts.method as GaxiosOptions["method"],
+        url: reqOpts.uri,
+        params: {
+          queryString: reqOpts.qs
+        },
+        headers: reqOpts.headers,
+        retryConfig: {
+          retry: config.retryOptions?.maxRetries
+        },
+        responseType: 'stream'
+      };
+  
+      gaxios.request<Readable>(reqOptsGaxios).then((response) => {
+        requestStream = response.data;
+        console.log('request stream');
+        console.log(requestStream);
+        // dup.setReadable(requestStream);
+        // Replay the Request events back to the stream.
+        requestStream.pipe(dup);
+        requestStream
+        .on('data', () => {
+          console.log("on data")
+          dup.setReadable(requestStream);
+          console.log("dup");
+          console.log(dup);
+          dup.emit.bind(dup, 'data')
+        } )
+        .on('error', () => {
+          console.log("on error")
+          dup.destroy.bind(dup)
+        } )
+        .on('response', () => {
+          console.log("on response")
+          dup.emit.bind(dup, 'response')
+        })
+        .on('end', () => { //the new complete
+          console.log("on end")
+          dup.emit.bind(dup, 'end')
+        });
+        dup.abort = requestStream.abort;
+        return dup;
+      })} else {
       // Streaming writable HTTP requests cannot be retried.
       requestStream = options.request!(reqOpts);
       dup.setWritable(requestStream);
-    }
-
-    // Replay the Request events back to the stream.
-    requestStream
+      
+      // Replay the Request events back to the stream.
+      requestStream
       .on('error', dup.destroy.bind(dup))
       .on('response', dup.emit.bind(dup, 'response'))
       .on('complete', dup.emit.bind(dup, 'complete'));
 
-    dup.abort = requestStream.abort;
-    return dup;
+      dup.abort = requestStream.abort;
+      return dup;
+    }
   }
 
   /**
